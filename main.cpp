@@ -9,7 +9,7 @@
 
 Serial pc(USBTX, USBRX);    // USB Serial Terminal
 ExperimentServer server;    // Object that lets us communicate with MATLAB
-PwmOut motorPMW(D5);        // Motor PMW output
+PwmOut motorPWM(D5);        // Motor PWM output
 DigitalOut motorFwd(D6);    // Motor forward enable
 DigitalOut motorRev(D7);    // Motor backward enable
 Timer t;                    // Timer to measure elapsed time of experiment
@@ -21,8 +21,8 @@ int main (void) {
     server.attachTerminal(pc);
     server.init();
 
-    // PMW period should nominally be a multiple of our control loop
-    motorPMW.period_us(500);
+    // PWM period should nominally be a multiple of our control loop
+    motorPWM.period_us(500);
     
     // Continually get input from MATLAB and run experiments
     float input_params[NUM_INPUTS];
@@ -38,15 +38,15 @@ int main (void) {
             encoder.reset();
             motorFwd = 1;
             motorRev = 0;
-            motorPMW.write(0);
+            motorPWM.write(0);
 
             // Run experiment
             while( t.read() < 2 ) { 
                 // Perform control loop logic
                 if (t.read() < 1) 
-                    motorPMW.write(v1);
+                    motorPWM.write(v1);
                 else 
-                    motorPMW.write(v2);
+                    motorPWM.write(v2);
                     
                 // Form output to send to MATLAB    
                 float output_data[NUM_OUTPUTS];
@@ -60,7 +60,7 @@ int main (void) {
             }     
             // Cleanup after experiment
             server.setExperimentComplete();
-            motorPMW.write(0);
+            motorPWM.write(0);
         } // end if
     } // end while
 } // end main
