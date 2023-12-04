@@ -6,7 +6,7 @@
 #include "MovingAverageFilter.h"
 
 // Define number of communication parameters with matlab
-#define NUM_INPUTS 5
+#define NUM_INPUTS 6
 #define NUM_OUTPUTS 5
 
 Serial pc(USBTX, USBRX,115200);     // USB Serial Terminal for debugging
@@ -54,10 +54,11 @@ int main (void) {
     while(1) {
         if (server.getParams(input_params,NUM_INPUTS)) {
             float angle_des   = input_params[0]; // Desired angle
-            float Kp   = input_params[1]; // Kp
-            float Kd   = input_params[2]; // Kd
-            float Ki   = input_params[3]; // Ki
-            float ExpTime = input_params[4]; // Expriement time in second
+            float vel_des     = input_params[1]; // Desired velocity
+            float Kp   = input_params[2]; // Kp
+            float Kd   = input_params[3]; // Kd
+            float Ki   = input_params[4]; // Ki
+            float ExpTime = input_params[5]; // Expriement time in second
 
             // Setup experiment
             t.reset();
@@ -78,8 +79,9 @@ int main (void) {
                 // Integrate the error
                 err_integration += angle - angle_des;
                 float voltage;
-                voltage = Kp * (angle - angle_des) + Kd * (velocity - 0.0) + Ki * err_integration;
+                voltage = Kp * (angle - angle_des) + Kd * (velocity - vel_des) + Ki * err_integration;
                 setMotorVoltage(voltage,M1INA,M1INB,M1PWM);
+                /**********TODO: Student task************/
 
                 // Form output to send to MATLAB    
                 float output_data[NUM_OUTPUTS];
