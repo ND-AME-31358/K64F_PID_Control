@@ -5,26 +5,40 @@
 #include "QEI.h"
 #include "MovingAverageFilter.h"
 
+// Define number of communication parameters with matlab
 #define NUM_INPUTS 5
 #define NUM_OUTPUTS 5
 
-struct MovingAverageFilter<float, 1> MAF(0.0);
+Serial pc(USBTX, USBRX,115200);     // USB Serial Terminal for debugging
+ExperimentServer server;            // Object that lets us communicate with MATLAB
+Timer t;                            // Timer to measure elapsed time of experiment
+Ticker currentLoopTicker;           // Ticker to call high frequency current loop
 
+// Assign digital/analog pins for control and sensing
+PwmOut     M1PWM(D10);              // Motor PWM output
+DigitalOut M1INA(D2);               // Motor forward enable
+DigitalOut M1INB(D3);               // Motor backward enable
+AnalogIn   CS(A2);                  // Current sensor
+
+float err_integration = 0.0;
+
+// Create a quadrature encoder
+// 64(counts/motor rev)*18.75(gear ratio) = 1200(counts/rev)
+// Pins A, B, no index, 1200 counts/rev, Quadrature encoding
+QEI encoder(D3,D5, NC, 1200 , QEI::X4_ENCODING);
 const float degPerTick = 360.0/1200.0;
 
-Serial pc(USBTX, USBRX,115200);    // USB Serial Terminal
-ExperimentServer server;    // Object that lets us communicate with MATLAB
-PwmOut motorPWM(D10);        // Motor PWM output
-DigitalOut motorFwd(D7);    // Motor forward enable
-DigitalOut motorRev(D8);    // Motor backward enable
-AnalogIn   CS(A3);
-Timer t;                    // Timer to measure elapsed time of experiment
-Ticker currentLoopTicker;
-float err_inter = 0;
+// Create a filter to smooth out the velocity estimation
+// MovingAverageFilter<DataType, WindowSize> MAF(InitValue);
+struct MovingAverageFilter<float, 5> MAF(0.0);
 
-QEI encoder(D14,D15, NC, 1200 , QEI::X4_ENCODING); // Pins D3, D4, no index, 1200 counts/rev, Quadrature encoding
+// Set motor duty [-1.0f, 1.0f]
+void setMotorDuty(float duty, DigitalOut &INA, DigitalOut &INB, PwmOut &PWM);
 
-void setMotorVoltage(float speed, DigitalOut &INA, DigitalOut &INB, PwmOut &PWM);
+const float SupplyVoltage = 12;     // Supply voltage in Volts
+// Precompute division to speed up in case compiler opt. is off
+const float SupplyVoltage_INV = 1/SupplyVoltage;
+void setMotorVoltage(float voltage, DigitalOut &INA, DigitalOut &INB, PwmOut &PWM);
 
 int main (void) {
     // Link the terminal with our server and start it up
@@ -32,7 +46,7 @@ int main (void) {
     server.init();
 
     // PWM period should nominally be a multiple of our control loop
-    motorPWM.period_us(50);
+    M1PWM.period_us(50);
     
     // Continually get input from MATLAB and run experiments
     float input_params[NUM_INPUTS];
@@ -45,60 +59,65 @@ int main (void) {
             float Ki   = input_params[3]; // Ki
             float ExpTime = input_params[4]; // Expriement time in second
 
-            err_inter = 0;
-        
             // Setup experiment
             t.reset();
             t.start();
             encoder.reset();
-            setMotorVoltage(0,motorFwd,motorRev,motorPWM);
+            setMotorVoltage(0,M1INA,M1INB,M1PWM);
+            err_integration = 0.0; // Reset error
 
             // Run experiment
-            // currentLoopTicker.attach(&currentLoop,0.0002);
             while( t.read() < ExpTime ) { 
                 
+                // Read angle from encoder
                 float angle = (float)encoder.getPulses()*degPerTick;
+                // Read velocity from encoder and filter it
                 float velocity = MAF.update(encoder.getVelocity()*degPerTick);
+                // Read the current sensor value
                 float current = 36.7f * CS - 18.3f;
-                err_inter += angle - angle_des;
-                float duty;
-                duty = Kp * (angle - angle_des) + Kd * (velocity - 0.0) + Ki * err_inter;
-                setMotorVoltage(duty,motorFwd,motorRev,motorPWM);
+                // Integrate the error
+                err_integration += angle - angle_des;
+                float voltage;
+                voltage = Kp * (angle - angle_des) + Kd * (velocity - 0.0) + Ki * err_integration;
+                setMotorVoltage(voltage,M1INA,M1INB,M1PWM);
 
                 // Form output to send to MATLAB    
                 float output_data[NUM_OUTPUTS];
                 output_data[0] = t.read();
                 output_data[1] = angle;
                 output_data[2] = velocity;
-                output_data[3] = duty;
+                output_data[3] = voltage;
                 output_data[4] = current;
                 
                 // Send data to MATLAB
                 server.sendData(output_data,NUM_OUTPUTS);
-                wait(.001); 
+                wait(.001);                  // Control and sending data in 1kHz
             }     
             // Cleanup after experiment
             server.setExperimentComplete();
-            setMotorVoltage(0,motorFwd,motorRev,motorPWM);
+            setMotorVoltage(0,M1INA,M1INB,M1PWM);
         } // end if
     } // end while
 } // end main
 
 
 
-// Set motor 1 voltage [-1.0f, 1.0f]
-void setMotorVoltage(float speed, DigitalOut &INA, DigitalOut &INB, PwmOut &PWM)
+//Set motor voltage (nagetive means reverse)
+void setMotorVoltage(float voltage, DigitalOut &INA, DigitalOut &INB, PwmOut &PWM){
+    setMotorDuty(voltage * SupplyVoltage_INV, INA, INB, PWM);
+}
+
+// Set motor duty [-1.0f, 1.0f]
+void setMotorDuty(float duty, DigitalOut &INA, DigitalOut &INB, PwmOut &PWM)
 {
     unsigned char reverse = 0;
 
-    if (speed < 0) {
-        speed = -speed;  // Make speed a positive quantity
+    if (duty < 0) {
+        duty = -duty;  // Make duty a positive quantity
         reverse = 1;  // Preserve the direction
     }
 
-    PWM.write(speed);
-
-    if (speed == 0) {
+    if (duty == 0) {
         INA = 0;  // Make the motor coast no
         INB = 0;  // matter which direction it is spinning.
     } else if (reverse) {
@@ -108,4 +127,6 @@ void setMotorVoltage(float speed, DigitalOut &INA, DigitalOut &INB, PwmOut &PWM)
         INA = 1;
         INB = 0;
     }
+
+    PWM.write(duty);
 }
