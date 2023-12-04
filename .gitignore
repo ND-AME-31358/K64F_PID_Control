@@ -6,3 +6,7 @@ compile_commands?json
 ExperimentServer
 QEI_pmw
 mbed-os
+.clangd
+.mbed
+compile_commands.json
+.cache
