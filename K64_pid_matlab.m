@@ -19,13 +19,14 @@ function output_data = K64_PID_matlab()
     % the FRDM board. Data comes in blocks, rather than one at a time.
     function my_callback(new_data)
         t = new_data(:,1);   % time
-        pos = new_data(:,2); % position
+        angle = new_data(:,2); % position
         vel = new_data(:,3); % velocity
-        current = new_data(:,5); % velocity
-        N = length(pos);
+        voltage = new_data(:,4); % voltage
+        current = new_data(:,5); % current
+        N = length(angle);
         
         h1.XData(end+1:end+N) = t;   % Update subplot 1
-        h1.YData(end+1:end+N) = pos;
+        h1.YData(end+1:end+N) = angle;
         h2.XData(end+1:end+N) = t;   % Update subplot 2
         h2.YData(end+1:end+N) = vel;
         h3.XData(end+1:end+N) = t;   % Update subplot 3
@@ -44,14 +45,14 @@ function output_data = K64_PID_matlab()
 %     output_size = 3;    % number of outputs expected
 
     angle_des = 90; 
+    vel_des = 0.0; 
     % Current Controller
     Kp = 0.03;
     Kd = 0.001;
     Ki = 0.0000;
     ExpTime = 3 ; % Expriement time
     
-    input = [angle_des Kp Kd Ki ExpTime];
-    %input = [1 3.8244 0.0 3 0 0 5];
+    input = [angle_des vel_des Kp Kd Ki ExpTime];
     output_size = 5;
    
     output_data = RunExperiment(frdm_ip,frdm_port,input,output_size,params);
