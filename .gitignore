@@ -6,3 +6,8 @@ compile_commands?json
 ExperimentServer
 QEI_pmw
 mbed-os
+.mbed
+compile_commands.json
+.clangd
+.cache
+RunExperimentMatlab

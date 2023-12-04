@@ -28,10 +28,6 @@ float err_integration = 0.0;
 QEI encoder(D3,D5, NC, 1200 , QEI::X4_ENCODING);
 const float degPerTick = 360.0/1200.0;
 
-// Create a filter to smooth out the velocity estimation
-// MovingAverageFilter<DataType, WindowSize> MAF(InitValue);
-struct MovingAverageFilter<float, 5> MAF(0.0);
-
 // Set motor duty [-1.0f, 1.0f]
 void setMotorDuty(float duty, DigitalOut &INA, DigitalOut &INB, PwmOut &PWM);
 
@@ -72,8 +68,8 @@ int main (void) {
                 
                 // Read angle from encoder
                 float angle = (float)encoder.getPulses()*degPerTick;
-                // Read velocity from encoder and filter it
-                float velocity = MAF.update(encoder.getVelocity()*degPerTick);
+                // Read velocity from encoder
+                float velocity = encoder.getVelocity()*degPerTick;
                 // Read the current sensor value
                 float current = 36.7f * CS - 18.3f;
                 // Integrate the error
