@@ -3,7 +3,6 @@
 #include "EthernetInterface.h"
 #include "ExperimentServer.h"
 #include "QEI.h"
-#include "MovingAverageFilter.h"
 
 // Define number of communication parameters with matlab
 #define NUM_INPUTS 6
@@ -32,8 +31,6 @@ const float degPerTick = 360.0/1200.0;
 void setMotorDuty(float duty, DigitalOut &INA, DigitalOut &INB, PwmOut &PWM);
 
 const float SupplyVoltage = 12;     // Supply voltage in Volts
-// Precompute division to speed up in case compiler opt. is off
-const float SupplyVoltage_INV = 1/SupplyVoltage;
 void setMotorVoltage(float voltage, DigitalOut &INA, DigitalOut &INB, PwmOut &PWM);
 
 int main (void) {
@@ -102,7 +99,7 @@ int main (void) {
 
 //Set motor voltage (nagetive means reverse)
 void setMotorVoltage(float voltage, DigitalOut &INA, DigitalOut &INB, PwmOut &PWM){
-    setMotorDuty(voltage * SupplyVoltage_INV, INA, INB, PWM);
+    setMotorDuty(voltage * SupplyVoltage, INA, INB, PWM);
 }
 
 // Set motor duty [-1.0f, 1.0f]
