@@ -3,6 +3,7 @@
 #include "EthernetInterface.h"
 #include "ExperimentServer.h"
 #include "QEI.h"
+#define PI 3.14159265358979323846
 
 // Define number of communication parameters with matlab
 #define NUM_INPUTS 6
@@ -13,19 +14,20 @@ ExperimentServer server;            // Object that lets us communicate with MATL
 Timer t;                            // Timer to measure elapsed time of experiment
 Ticker currentLoopTicker;           // Ticker to call high frequency current loop
 
+/************************Complete the code in this block**************************/
 // Assign digital/analog pins for control and sensing
-PwmOut     M1PWM(D10);              // Motor PWM output
+PwmOut     M1PWM(D9);              // Motor PWM output
 DigitalOut M1INA(D2);               // Motor forward enable
-DigitalOut M1INB(D3);               // Motor backward enable
+DigitalOut M1INB(D4);               // Motor backward enable
 AnalogIn   CS(A2);                  // Current sensor
-
-float err_integration = 0.0;
+/*********************************************************************************/
 
 // Create a quadrature encoder
 // 64(counts/motor rev)*18.75(gear ratio) = 1200(counts/rev)
 // Pins A, B, no index, 1200 counts/rev, Quadrature encoding
-QEI encoder(D3,D5, NC, 1200 , QEI::X4_ENCODING);
-const float degPerTick = 360.0/1200.0;
+// Note: Reversed A & B to match motor direction
+QEI encoder(D5,D3, NC, 1200 , QEI::X4_ENCODING); 
+const float radPerTick = 2.0*PI/1200.0;
 
 // Set motor duty [-1.0f, 1.0f]
 void setMotorDuty(float duty, DigitalOut &INA, DigitalOut &INB, PwmOut &PWM);
@@ -46,35 +48,41 @@ int main (void) {
     
     while(1) {
         if (server.getParams(input_params,NUM_INPUTS)) {
-            float angle_des   = input_params[0]; // Desired angle
-            float vel_des     = input_params[1]; // Desired velocity
-            float Kp   = input_params[2]; // Kp
-            float Kd   = input_params[3]; // Kd
-            float Ki   = input_params[4]; // Ki
-            float ExpTime = input_params[5]; // Expriement time in second
+            // Unpack parameters from MATLAB
+            float angle_des = input_params[0];  // Desired angle
+            float vel_des   = input_params[1];  // Desired velocity
+            float Kp        = input_params[2];  // Kp
+            float Kd        = input_params[3];  // Kd
+            float Ki        = input_params[4];  // Ki
+            float ExpTime   = input_params[5];  // Expriement time in second
 
             // Setup experiment
             t.reset();
             t.start();
             encoder.reset();
             setMotorVoltage(0,M1INA,M1INB,M1PWM);
-            err_integration = 0.0; // Reset error
+            float err_integration = 0.0;        // Integration of angle error
 
             // Run experiment
             while( t.read() < ExpTime ) { 
                 
                 // Read angle from encoder
-                float angle = (float)encoder.getPulses()*degPerTick;
+                float angle = (float)encoder.getPulses()*radPerTick;
                 // Read velocity from encoder
-                float velocity = encoder.getVelocity()*degPerTick;
+                float velocity = encoder.getVelocity()*radPerTick;
+/************************Complete the computation of current sensing***************/
+                // Copy current sensing code from previous part
                 // Read the current sensor value
-                float current = 36.7f * CS - 18.3f;
+                float current = 36.7f * CS - 18.4f;
+/*********************************************************************************/
                 // Integrate the error
                 err_integration += angle - angle_des;
+
+/***************PID Controller***************************************************************************/
                 float voltage;
                 voltage = Kp * (angle - angle_des) + Kd * (velocity - vel_des) + Ki * err_integration;
                 setMotorVoltage(voltage,M1INA,M1INB,M1PWM);
-                /**********TODO: Student task************/
+/********************************************************************************************************/
 
                 // Form output to send to MATLAB    
                 float output_data[NUM_OUTPUTS];
@@ -99,7 +107,7 @@ int main (void) {
 
 //Set motor voltage (nagetive means reverse)
 void setMotorVoltage(float voltage, DigitalOut &INA, DigitalOut &INB, PwmOut &PWM){
-    setMotorDuty(voltage * SupplyVoltage, INA, INB, PWM);
+    setMotorDuty(voltage / SupplyVoltage, INA, INB, PWM);
 }
 
 // Set motor duty [-1.0f, 1.0f]
