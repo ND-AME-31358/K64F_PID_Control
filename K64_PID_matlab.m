@@ -1,18 +1,23 @@
 function output_data = K64_PID_matlab()
     figure(1);  clf;       % Create an empty figure to update later
-    subplot(311)
+    subplot(411)
     h1 = plot([0],[0]);
     h1.XData = []; h1.YData = [];
-    ylabel('Position (degs)');
+    ylabel('Position (rad)');
     
-    subplot(312)
+    subplot(412)
     h2 = plot([0],[0]);
     h2.XData = []; h2.YData = [];
-    ylabel('Velocity (degs/s)');
+    ylabel('Velocity (rad/s)');
     
-    subplot(313)
+    subplot(413)
     h3 = plot([0],[0]);
     h3.XData = []; h3.YData = [];
+    ylabel('Voltage (V)');
+    
+    subplot(414)
+    h4 = plot([0],[0]);
+    h4.XData = []; h4.YData = [];
     ylabel('Current (A)');
     
     % This function will get called any time there is new data from
@@ -30,7 +35,9 @@ function output_data = K64_PID_matlab()
         h2.XData(end+1:end+N) = t;   % Update subplot 2
         h2.YData(end+1:end+N) = vel;
         h3.XData(end+1:end+N) = t;   % Update subplot 3
-        h3.YData(end+1:end+N) = current;
+        h3.YData(end+1:end+N) = voltage;
+        h4.XData(end+1:end+N) = t;   % Update subplot 4
+        h4.YData(end+1:end+N) = current;
     end
     
     frdm_ip  = '192.168.1.100';     % FRDM board ip
@@ -44,12 +51,12 @@ function output_data = K64_PID_matlab()
 %     input = [v1 v2];    % input sent to FRDM board
 %     output_size = 3;    % number of outputs expected
 
-    angle_des = 90; 
+    angle_des = pi/2; 
     vel_des = 0.0; 
-    % Current Controller
-    Kp = 0.03;
-    Kd = 0.001;
-    Ki = 0.0000;
+    % PID Controller
+    Kp = 3;
+    Kd = 0.1;
+    Ki = 0.00;
     ExpTime = 3 ; % Expriement time
     
     input = [angle_des vel_des Kp Kd Ki ExpTime];

@@ -80,7 +80,7 @@ int main (void) {
 
 /***************PID Controller***************************************************************************/
                 float voltage;
-                voltage = Kp * (angle - angle_des) + Kd * (velocity - vel_des) + Ki * err_integration;
+                voltage = -Kp * (angle - angle_des) - Kd * (velocity - vel_des) - Ki * err_integration;
                 setMotorVoltage(voltage,M1INA,M1INB,M1PWM);
 /********************************************************************************************************/
 
