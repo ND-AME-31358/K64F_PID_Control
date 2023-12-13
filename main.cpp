@@ -13,6 +13,7 @@ Serial pc(USBTX, USBRX,115200);     // USB Serial Terminal for debugging
 ExperimentServer server;            // Object that lets us communicate with MATLAB
 Timer t;                            // Timer to measure elapsed time of experiment
 Ticker currentLoopTicker;           // Ticker to call high frequency current loop
+DigitalOut led_g(LED_GREEN,1);      // UDP server state indicator
 
 /************************Complete the code in this block**************************/
 // Assign digital/analog pins for control and sensing
@@ -39,6 +40,7 @@ int main (void) {
     // Link the terminal with our server and start it up
     server.attachTerminal(pc);
     server.init();
+    led_g = 0;  // UDP server is ready, turn on green led
 
     // PWM period should nominally be a multiple of our control loop
     M1PWM.period_us(50);
