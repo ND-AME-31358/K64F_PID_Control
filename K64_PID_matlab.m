@@ -51,7 +51,7 @@ function output_data = K64_PID_matlab()
 %     input = [v1 v2];    % input sent to FRDM board
 %     output_size = 3;    % number of outputs expected
 
-    angle_des = pi/2; 
+    angle_des = 1; 
     vel_des = 0.0; 
     % PID Controller
     Kp = 3;
