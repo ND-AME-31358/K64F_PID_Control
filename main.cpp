@@ -6,15 +6,21 @@
 #include "FastPWM.h"
 #define PI 3.14159265358979323846
 #define PWMfrequency 5000
-#define PWMperiodTicks 12000 // == 60 000 000 / PWMfrequency
+#define PWMperiodTicks 12000 // equals to (60 000 000 / PWMfrequency), and we choose to use 5kHz PWM
 
-// Trick to bypass ISR error
+/* --------------------------------------------------- 
+ * Implementing a workaround to bypass an ISR-related error by substituting 
+   the standard AnalogIn with our custom MyAnalogIn class throughout the experiment. 
+   This change is crucial but the details are not essential for understanding the overall experiment setup.
+   Please ignore the implementation but use MyAnalogIn everytime you want to use AnalogIn
+*/
 class MyAnalogIn : public AnalogIn {
 public:
     MyAnalogIn(PinName inp) : AnalogIn(inp) { }
     virtual void lock() { }
     virtual void unlock() { }
 };
+/* --------------------------------------------------- */
 
 // Define number of communication parameters with matlab
 #define NUM_INPUTS 6
@@ -26,13 +32,16 @@ Timer t;                            // Timer to measure elapsed time of experime
 Ticker currentLoopTicker;           // Ticker to call high frequency current loop
 DigitalOut led_g(LED_GREEN,1);      // UDP server state indicator
 
-/************************Complete the code in this block**************************/
-// Assign digital/analog pins for control and sensing
-FastPWM    M1PWM(D9);               // Motor PWM output (we are using the "FastPWM" rather than built-in "PwmOut" for higher resolution)
-DigitalOut M1INA(D2);               // Motor forward enable
-DigitalOut M1INB(D4);               // Motor backward enable
-MyAnalogIn   CS(A2);                // Current sensor
-/*********************************************************************************/
+/* ===== Complete the code in this block =====
+ * Assign appropriate digital/analog pin number for control and sensing in the 
+ * Example: For digital pin 1, you have to enter D1
+ * Example: For analog  pin 1, you have to enter A1
+*/
+FastPWM    M1PWM(D*);               // Motor PWM output (we are using the "FastPWM" rather than built-in "PwmOut" for higher resolution)
+DigitalOut M1INA(D*);               // Motor forward enable
+DigitalOut M1INB(D*);               // Motor backward enable
+**********    CS(**);               // Current sensor
+/* ===== End of code block =================== */
 
 // Create a quadrature encoder
 // 64(counts/motor rev)*18.75(gear ratio) = 1200(counts/rev)
@@ -45,8 +54,13 @@ const float radPerTick = 2.0*PI/1200.0;
 void setMotorDuty(float duty, DigitalOut &INA, DigitalOut &INB, FastPWM &PWM);
 
 const float SupplyVoltage = 12;     // Supply voltage in Volts
+// Set motor voltage in (V)
 void setMotorVoltage(float voltage, DigitalOut &INA, DigitalOut &INB, FastPWM &PWM);
 
+/* Main function that would run on the FRDM board
+ * Note: unlike Arduino, we do not have a setup function and a loop function
+ * The main function would only run once. To have a loop, we have to use while loop by ourselves
+*/ 
 int main (void) {
     // Link the terminal with our server and start it up
     server.attachTerminal(pc);
@@ -60,45 +74,48 @@ int main (void) {
     // Continually get input from MATLAB and run experiments
     float input_params[NUM_INPUTS];
     
+    // infinite while loop, analogous to Arduino's loop function
     while(1) {
-        if (server.getParams(input_params,NUM_INPUTS)) {
+        if (server.getParams(input_params,NUM_INPUTS)) { // Check whether we have parameter
             // Unpack parameters from MATLAB
             float angle_des = input_params[0];  // Desired angle
             float vel_des   = input_params[1];  // Desired velocity
-            float Kp        = input_params[2];  // Kp
-            float Kd        = input_params[3];  // Kd
-            float Ki        = input_params[4];  // Ki
+            float Kp        = input_params[2];  // Proportional gain
+            float Kd        = input_params[3];  // Derivative gain
+            float Ki        = input_params[4];  // Integral gain
             float ExpTime   = input_params[5];  // Expriement time in second
 
             // Setup experiment
-            t.reset();
-            t.start();
+            t.reset(); // Reset timer
+            t.start(); // Start timer so that we have elapsed time of experiment
             encoder.reset();
-            setMotorVoltage(0,M1INA,M1INB,M1PWM);
-            float err_integration = 0.0;        // Integration of angle error
+            setMotorVoltage(0,M1INA,M1INB,M1PWM); //Turn off motor just in case
+            float err_integration = 0.0; // Reset integration of angle error
 
-            // Run experiment
-            while( t.read() < ExpTime ) { 
+            // Run experiment until timeout
+            while( t.read() < ExpTime ) {
+
+                /* ===== Complete the code in this block =====
+                 * Copy the current sensing code from your previous project
+                */
+                float current  = 0.0f * CS; // Read the current sensor value
+                /* ===== End of code block =================== */
                 
-                // Read angle from encoder
-                float angle = (float)encoder.getPulses()*radPerTick;
-                // Read velocity from encoder
-                float velocity = encoder.getVelocity()*radPerTick;
-/************************Complete the computation of current sensing***************/
-                // Copy current sensing code from previous part
-                // Read the current sensor value
-                float current = 36.7f * (CS - 0.5f);
-/*********************************************************************************/
+                // Read angle and velocity from encoder
+                float angle    = (float)encoder.getPulses()   * radPerTick; // in rad
+                float velocity =        encoder.getVelocity() * radPerTick; // in rad/s
+
                 // Integrate the error
-                err_integration += angle - angle_des;
+                err_integration += angle_des - angle;
 
-/***************PID Controller***************************************************************************/
-                float voltage;
-                voltage = -Kp * (angle - angle_des) - Kd * (velocity - vel_des) - Ki * err_integration;
+                /* ===== Complete the code in this block =====
+                 * Complete the PID controller below based on the 
+                */
+                float voltage = 0.0f * (angle_des - angle) + 0.0f * (vel_des - velocity) + 0.0f * err_integration;
                 setMotorVoltage(voltage,M1INA,M1INB,M1PWM);
-/********************************************************************************************************/
+                /* ===== End of code block =================== */
 
-                // Form output to send to MATLAB    
+                // Fill the output data to send back to MATLAB
                 float output_data[NUM_OUTPUTS];
                 output_data[0] = t.read();
                 output_data[1] = angle;
@@ -108,13 +125,14 @@ int main (void) {
                 
                 // Send data to MATLAB
                 server.sendData(output_data,NUM_OUTPUTS);
-                wait(.001);                  // Control and sending data in 1kHz
-            }     
+                wait(.001); // Running control loop and sending data in roughly 1kHz
+            } // end of experiment loop
+
             // Cleanup after experiment
             server.setExperimentComplete();
             setMotorVoltage(0,M1INA,M1INB,M1PWM);
-        } // end if
-    } // end while
+        } // end if of "check whether we have parameter"
+    } // end while of "infinite while loop"
 } // end main
 
 
