@@ -81,8 +81,8 @@ int main (void) {
             float angle_des = input_params[0];  // Desired angle
             float vel_des   = input_params[1];  // Desired velocity
             float Kp        = input_params[2];  // Proportional gain
-            float Kd        = input_params[3];  // Derivative gain
-            float Ki        = input_params[4];  // Integral gain
+            float Ki        = input_params[3];  // Integral gain
+            float Kd        = input_params[4];  // Derivative gain
             float ExpTime   = input_params[5];  // Expriement time in second
 
             // Setup experiment
