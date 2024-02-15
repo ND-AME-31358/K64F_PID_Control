@@ -54,7 +54,7 @@ function output_data = K64_PID_matlab()
     % PID Controller Gains
     Kp        = 3;    % Proportional
     Ki        = 0.0;  % Integral
-    Kd        = 0.1;  % Derivitive
+    Kd        = 0.0;  % Derivitive
     ExpTime   = 3;    % Expriement time
     
     % Pack experiment parameters
