@@ -2,9 +2,11 @@ function output_data = K64_PID_matlab()
 %K64_PID_matlab Communicate to FRDM board to start PID controller
 %   See parameters below
     figure(1);  clf;       % Create an empty figure to update later
-    subplot(411)
+    subplot(411); hold on
     h1 = plot([0],[0]);
     h1.XData = []; h1.YData = [];
+    h12 = plot([0],[0], 'r');
+    h12.XData = []; h12.YData = [];
     ylabel('Position (rad)');
     
     subplot(412)
@@ -40,6 +42,9 @@ function output_data = K64_PID_matlab()
         h3.YData(end+1:end+N) = volt;
         h4.XData(end+1:end+N) = t;   % Update subplot 4
         h4.YData(end+1:end+N) = current;
+        
+        h12.XData(end+1:end+N) = t;   % Draw target position
+        h12.YData(end+1:end+N) = angle_des*ones(N,1);
     end
     
     % Setup the communication between PC and FRDM board
@@ -52,7 +57,7 @@ function output_data = K64_PID_matlab()
     angle_des = 1;    % Desired angle
     vel_des   = 0.0;  % Desired angular velocity
     % PID Controller Gains
-    Kp        = 3;    % Proportional
+    Kp        = 1;    % Proportional
     Ki        = 0.0;  % Integral
     Kd        = 0.0;  % Derivitive
     ExpTime   = 3;    % Expriement time
