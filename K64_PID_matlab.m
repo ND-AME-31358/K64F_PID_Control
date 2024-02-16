@@ -7,6 +7,7 @@ function output_data = K64_PID_matlab()
     h1.XData = []; h1.YData = [];
     h12 = plot([0],[0], 'r');
     h12.XData = []; h12.YData = [];
+    legend("Sensed", "Desired");
     ylabel('Position (rad)');
     
     subplot(412)
